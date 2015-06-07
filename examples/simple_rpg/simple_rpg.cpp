@@ -27,6 +27,7 @@ void* instantiation_provider(oms::context* ctx, const std::string& type){
 	if(type=="WorldState")return new WorldState();
 	if(type=="CharacterState")return new CharacterState();
 	if(type=="HeroState")return new HeroState();
+	if(type=="ItemState")return new ItemState();
 	std::cout << "type '" << type << "' not found!" << std::endl;
 	return 0;
 }
