@@ -1,0 +1,1 @@
+ g++ simple_rpg.cpp ../../oms.cpp -o simple_rpg.exe
