@@ -255,7 +255,7 @@ void HeroState::read(oms::context* ctx, HeroState* o){
 	CharacterState::read(ctx, o);//call to super
 	std::cout << "HeroState::read called." << std::endl;
 
-	if(oms::check_property(ctx,"imNewHereToo",oms::type_integer)){
+	if(oms::check_property(ctx,"imNewHere",oms::type_integer)){
 			o->xp=oms::read_integer(ctx);
 	}
 
@@ -293,11 +293,11 @@ ItemState::~ItemState(){
 }
 
 void ItemState::write(oms::context* ctx, ItemState* o){
-
+	std::cout << "ItemState::write called." << std::endl;
 }
 
 void ItemState::read(oms::context* ctx, ItemState* o){
-
+	std::cout << "ItemState::read called." << std::endl;
 }
 
 Item::Item(ItemTemplate* t, ItemState* s){

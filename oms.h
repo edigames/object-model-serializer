@@ -48,6 +48,7 @@ namespace oms{
 	void write_null(oms::context* ctx);
 	void write_boolean(oms::context* ctx, bool v);
 	void write_integer(oms::context* ctx, int v);
+	void write_number(oms::context* ctx, double v);
 	void write_string(oms::context* ctx, const std::string& v);
 
 	void write_object(oms::context* ctx, void* o, const std::string& type, write_fn wfn);
@@ -58,6 +59,7 @@ namespace oms{
 	uint32_t check_size(oms::context* ctx, uint8_t type);
 	bool read_boolean(oms::context* ctx);
 	int read_integer(oms::context* ctx);
+	double read_number(oms::context* ctx);
 	void* read_object(oms::context* ctx, read_fn rfn);
 	std::string read_string(oms::context* ctx);
 
@@ -65,30 +67,34 @@ namespace oms{
 
 	int8_t read_next(oms::context* ctx);
 
+	//primitive IO
 	namespace io{
+
+		//writers
 		void write_int8(std::ostream* os, int8_t v);
 		void write_int16(std::ostream* os, int16_t v);
 		void write_int32(std::ostream* os, int32_t v);
 		void write_int64(std::ostream* os, int64_t v);
-
 		void write_uint8(std::ostream* os, uint8_t v);
 		void write_uint16(std::ostream* os, uint16_t v);
 		void write_uint32(std::ostream* os, uint32_t v);
 		void write_uint64(std::ostream* os, uint64_t v);
-
+		void write_float(std::ostream* os, float v);
+		void write_double(std::ostream* os, double v);
 		void write_string(std::ostream* os, const std::string& v);
 		void write_bool(std::ostream* os, bool v);
 
+		//readers
 		int8_t read_int8(std::istream* is);
 		int16_t read_int16(std::istream* is);
 		int32_t read_int32(std::istream* is);
 		int64_t read_int64(std::istream* is);
-
 		uint8_t read_uint8(std::istream* is);
 		uint16_t read_uint16(std::istream* is);
 		uint32_t read_uint32(std::istream* is);
 		uint64_t read_uint64(std::istream* is);
-
+		float read_float(std::istream* is);
+		double read_double(std::istream* is);
 		std::string read_string(std::istream* is);
 		bool read_bool(std::istream* is);
 	}

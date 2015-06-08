@@ -39,6 +39,11 @@ void oms::write_integer(oms::context* ctx, int v){
 	oms::io::write_int32(ctx->ios, v);
 }
 
+void oms::write_number(oms::context* ctx, double v){
+	oms::io::write_uint8(ctx->ios, type_number);
+	oms::io::write_double(ctx->ios, v);
+}
+
 void oms::write_string(oms::context* ctx, const std::string& v){
 	oms::io::write_uint8(ctx->ios, type_string);
 	oms::io::write_string(ctx->ios, v);
@@ -84,7 +89,6 @@ void oms::write_object(oms::context* ctx, void* o, const std::string& type, writ
 }
 
 bool oms::check_property(oms::context* ctx, const std::string& name, uint8_t type){
-
 	std::map<std::string,std::streampos>::iterator it=ctx->ps.top()->find(name);
 	if(it!=ctx->ps.top()->end()){
 		ctx->ios->seekg(it->second);
@@ -110,13 +114,12 @@ uint32_t oms::check_size(oms::context* ctx, uint8_t type){
 	switch(type){
 	case oms::type_boolean:
 		return 1;
-		break;
 	case oms::type_integer:
 		return 4;
-		break;
+	case oms::type_number:
+		return 8;
 	case oms::type_object:
 		return oms::io::read_uint32(ctx->ios);
-		break;
 	}
 	return 0;
 }
@@ -129,6 +132,10 @@ int oms::read_integer(oms::context* ctx){
 	return oms::io::read_int32(ctx->ios);
 }
 
+double oms::read_number(oms::context* ctx){
+	return oms::io::read_double(ctx->ios);
+}
+
 std::string oms::read_string(oms::context* ctx){
 	return oms::io::read_string(ctx->ios);
 }
@@ -136,28 +143,6 @@ std::string oms::read_string(oms::context* ctx){
 bool oms::next_property(oms::context* ctx){
 	uint8_t gonogo=oms::io::read_uint8(ctx->ios);
 	return gonogo==1;
-}
-
-void oms::io::write_int32(std::ostream* os, int32_t v){
-	os->write((char*)&v,4);
-}
-
-void oms::io::write_uint8(std::ostream* os, uint8_t v){
-	os->write((char*)&v,1);
-}
-
-void oms::io::write_uint32(std::ostream* os, uint32_t v){
-	os->write((char*)&v,4);
-}
-
-void oms::io::write_string(std::ostream* os, const std::string& v){
-	uint32_t l=v.length();
-	os->write((char*)&l,4);
-	os->write((char*)v.data(),l);
-}
-
-void oms::io::write_bool(std::ostream* os, bool v){
-	os->write((char*)&v,1);
 }
 
 void* oms::read_object(oms::context* ctx, read_fn rfn){
@@ -209,9 +194,68 @@ void* oms::read_object(oms::context* ctx, read_fn rfn){
 	return o;
 }
 
+//primitive IO functions
+void oms::io::write_int8(std::ostream* os, int8_t v){
+	os->write((char*)&v,1);
+}
+
+void oms::io::write_int16(std::ostream* os, int16_t v){
+	os->write((char*)&v,2);
+}
+
+void oms::io::write_int32(std::ostream* os, int32_t v){
+	os->write((char*)&v,4);
+}
+
+void oms::io::write_int64(std::ostream* os, int64_t v){
+	os->write((char*)&v,8);
+}
+
+void oms::io::write_uint8(std::ostream* os, uint8_t v){
+	os->write((char*)&v,1);
+}
+
+void oms::io::write_uint16(std::ostream* os, uint16_t v){
+	os->write((char*)&v,2);
+}
+
+void oms::io::write_uint32(std::ostream* os, uint32_t v){
+	os->write((char*)&v,4);
+}
+
+void oms::io::write_uint64(std::ostream* os, uint64_t v){
+	os->write((char*)&v,8);
+}
+
+
+void oms::io::write_float(std::ostream* os, float v){
+	os->write((char*)&v,4);
+}
+
+void oms::io::write_double(std::ostream* os, double v){
+	os->write((char*)&v,8);
+}
+
+//todo: employ 7bit leading string length
+void oms::io::write_string(std::ostream* os, const std::string& v){
+	uint32_t l=v.length();
+	os->write((char*)&l,4);
+	os->write((char*)v.data(),l);
+}
+
+void oms::io::write_bool(std::ostream* os, bool v){
+	os->write((char*)&v,1);
+}
+
 int8_t oms::io::read_int8(std::istream* is){
 	int8_t v;
 	is->read((char*)&v,1);
+	return v;
+}
+
+int16_t oms::io::read_int16(std::istream* is){
+	int16_t v;
+	is->read((char*)&v,2);
 	return v;
 }
 
@@ -221,10 +265,21 @@ int32_t oms::io::read_int32(std::istream* is){
 	return v;
 }
 
+int64_t oms::io::read_int64(std::istream* is){
+	int64_t v;
+	is->read((char*)&v,8);
+	return v;
+}
 
 uint8_t oms::io::read_uint8(std::istream* is){
 	uint8_t v;
 	is->read((char*)&v,1);
+	return v;
+}
+
+uint16_t oms::io::read_uint16(std::istream* is){
+	uint16_t v;
+	is->read((char*)&v,2);
 	return v;
 }
 
@@ -234,6 +289,25 @@ uint32_t oms::io::read_uint32(std::istream* is){
 	return v;
 }
 
+uint64_t oms::io::read_uint64(std::istream* is){
+	uint64_t v;
+	is->read((char*)&v,8);
+	return v;
+}
+
+float oms::io::read_float(std::istream* is){
+	float v;
+	is->read((char*)&v,4);
+	return v;
+}
+
+double oms::io::read_double(std::istream* is){
+	double v;
+	is->read((char*)&v,8);
+	return v;
+}
+
+//todo: employ 7bit leading string length
 std::string oms::io::read_string(std::istream* is){
 	uint32_t l=0;
 	is->read((char*)&l,4);
