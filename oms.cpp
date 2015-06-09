@@ -46,6 +46,7 @@ void oms::write_number(oms::context* ctx, double v){
 
 void oms::write_string(oms::context* ctx, const std::string& v){
 	oms::io::write_uint8(ctx->ios, type_string);
+	oms::io::write_uint32(ctx->ios, 4 + v.length());//write variable length (header+strlen)
 	oms::io::write_string(ctx->ios, v);
 }
 
@@ -75,7 +76,7 @@ void oms::write_object(oms::context* ctx, void* o, const std::string& type, writ
 		//delgate to writer
 		wfn(ctx,o);
 
-		//write nogo byte
+		//write trailing nogo byte (end of properties)
 		oms::io::write_uint8(ctx->ios, 0);
 
 		//pop stream
@@ -118,6 +119,8 @@ uint32_t oms::check_size(oms::context* ctx, uint8_t type){
 		return 4;
 	case oms::type_number:
 		return 8;
+	case oms::type_string:
+		return oms::io::read_uint32(ctx->ios);
 	case oms::type_object:
 		return oms::io::read_uint32(ctx->ios);
 	}

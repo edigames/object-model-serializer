@@ -1,0 +1,1 @@
+ g++ simple_rpg_trinity.cpp ../../oms.cpp -o simple_rpg_trinity.exe
