@@ -1,0 +1,1 @@
+ g++ test_suite.cpp ../../oms.cpp -o test_suite.exe

@@ -58,9 +58,18 @@ namespace oms{
 	std::string read_string(oms::context* ctx);
 	void* read_object(oms::context* ctx, read_fn rfn);
 
+
+
 	bool check_property(oms::context* ctx, const std::string& name, uint8_t type);
 	bool check_type(oms::context* ctx, uint8_t type);
 	uint32_t check_size(oms::context* ctx, uint8_t type);
+
+	//utility functions
+	namespace util{
+		//todo: write some one-liner-to/from-file functions, akin to C# 'readallbytes'
+		void* deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn);
+		std::string write_to_string(void* o, const std::string& type, oms::write_fn wfn);
+	}
 
 	//primitive IO
 	namespace io{

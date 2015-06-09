@@ -193,6 +193,33 @@ void* oms::read_object(oms::context* ctx, read_fn rfn){
 	return o;
 }
 
+//perform a deep copy of an object model by serialization
+void* oms::util::deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn){
+	std::stringstream ss;
+	oms::context* ctx=0;
+	ctx=oms::open_context(&ss, 0);
+	oms::write_object(ctx, o, type, wfn);
+	oms::close_context(ctx);
+	ss.seekg(0);//rewind
+	ctx=oms::open_context(&ss, ifn);
+	void* o2=0;
+	if(oms::check_type(ctx,oms::type_object)){
+		o2=oms::read_object(ctx, rfn);
+	}
+	oms::close_context(ctx);
+	return o2;
+}
+
+std::string oms::util::write_to_string(void* o, const std::string& type, oms::write_fn wfn){
+	std::stringstream ss;
+	oms::context* ctx=0;
+	ctx=oms::open_context(&ss, 0);
+	oms::write_object(ctx, o, type, wfn);
+	oms::close_context(ctx);
+	return ss.str();
+}
+
+
 //primitive IO functions
 void oms::io::write_int8(std::ostream* os, int8_t v){
 	os->write((char*)&v,1);
