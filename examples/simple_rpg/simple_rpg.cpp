@@ -8,12 +8,12 @@ int main(void){
 	World* world=createWorld();
 
 	//save object model
-	save(world);
+	oms::util::write_to_file("file.bin",world,"World",(oms::write_fn)World::write);
 
 	std::cout << std::endl << std::endl; //gimme some space
 
 	//reload object model
-	World* newWorld=load();
+	World* newWorld=(World*)oms::util::read_from_file("file.bin","World",(oms::read_fn)World::read,(oms::inst_fn)instantiation_provider);
 
 	delete world;
 	world=0;
@@ -28,30 +28,6 @@ void* instantiation_provider(oms::context* ctx, const std::string& type){
 	if(type=="Item")return new Item();
 	std::cout << "type '" << type << "' not found!" << std::endl;
 	return 0;
-}
-
-void save(World* world){
-	std::fstream s;
-	s.open("test.bin",std::ios::out | std::ios::binary | std::ios::trunc);
-	oms::context* ctx=oms::open_context(&s,0);
-	std::cout << "writing world" << std::endl;
-	oms::write_object(ctx, world, "World", (oms::write_fn)World::write);
-	oms::close_context(ctx);
-	ctx=0;
-}
-
-World* load(void){
-	std::fstream s;
-	s.open("test.bin",std::ios::in | std::ios::binary);
-	oms::context* ctx=oms::open_context(&s,(oms::inst_fn)instantiation_provider);
-	std::cout << "reading world" << std::endl;
-	World* world=0;
-	if(oms::check_type(ctx, oms::type_object)){
-		world = (World*)oms::read_object(ctx, (oms::read_fn)World::read);
-	}
-	oms::close_context(ctx);
-	ctx=0;
-	return world;
 }
 
 //create the world

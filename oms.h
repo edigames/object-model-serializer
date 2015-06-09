@@ -69,6 +69,8 @@ namespace oms{
 		//todo: write some one-liner-to/from-file functions, akin to C# 'readallbytes'
 		void* deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn);
 		std::string write_to_string(void* o, const std::string& type, oms::write_fn wfn);
+		void write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn);
+		void* read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn);
 	}
 
 	//primitive IO

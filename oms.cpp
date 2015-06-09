@@ -7,6 +7,7 @@
 */
 
 #include "oms.h"
+#include <fstream>
 #include <algorithm>
 
 oms::context* oms::open_context(std::iostream* ios, oms::inst_fn ifn){
@@ -216,6 +217,30 @@ std::string oms::util::write_to_string(void* o, const std::string& type, oms::wr
 	oms::write_object(ctx, o, type, wfn);
 	oms::close_context(ctx);
 	return ss.str();
+}
+
+void oms::util::write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn){
+	std::fstream f;
+	oms::context* ctx=0;
+	f.open(file.c_str(),std::ios::out | std::ios::binary | std::ios::trunc);
+	ctx=oms::open_context(&f, 0);
+	oms::write_object(ctx, o, type, wfn);
+	oms::close_context(ctx);
+	f.close();
+}
+
+void* oms::util::read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn){
+	std::fstream f;
+	oms::context* ctx=0;
+	f.open(file.c_str(),std::ios::in | std::ios::binary);
+	ctx=oms::open_context(&f, ifn);
+	void* o=0;
+	if(oms::check_type(ctx,oms::type_object)){
+		o=oms::read_object(ctx, rfn);
+	}
+	oms::close_context(ctx);
+	f.close();
+	return o;
 }
 
 
