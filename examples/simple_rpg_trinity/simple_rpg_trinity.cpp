@@ -10,12 +10,14 @@ int main(void){
 	engine->world=createWorld(engine, worldState);
 
 	//save object model state
-	save(worldState);
+	save(worldState, "test1.bin");
 
 	std::cout << std::endl << std::endl; //gimme some space
 
 	//reload object model state
-	WorldState* newWorldState=load();
+	WorldState* newWorldState=load("test1.bin");
+
+	save(newWorldState, "test2.bin");
 
 	delete engine;
 	engine=0;
@@ -32,9 +34,9 @@ void* instantiation_provider(oms::context* ctx, const std::string& type){
 	return 0;
 }
 
-void save(WorldState* worldState){
+void save(WorldState* worldState, const std::string& file){
 	std::fstream s;
-	s.open("test.bin",std::ios::out | std::ios::binary | std::ios::trunc);
+	s.open(file.c_str(),std::ios::out | std::ios::binary | std::ios::trunc);
 	oms::context* ctx=oms::open_context(&s,0);
 	std::cout << "writing worldstate" << std::endl;
 	oms::write_object(ctx, worldState, "WorldState", (oms::write_fn)WorldState::write);
@@ -42,9 +44,9 @@ void save(WorldState* worldState){
 	ctx=0;
 }
 
-WorldState* load(void){
+WorldState* load(const std::string& file){
 	std::fstream s;
-	s.open("test.bin",std::ios::in | std::ios::binary);
+	s.open(file.c_str(),std::ios::in | std::ios::binary);
 	oms::context* ctx=oms::open_context(&s,(oms::inst_fn)instantiation_provider);
 	std::cout << "reading worldstate" << std::endl;
 	WorldState* worldState=0;

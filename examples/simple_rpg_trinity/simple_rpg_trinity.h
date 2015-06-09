@@ -27,8 +27,8 @@ class Item;
 
 //function decl.
 void* instantiation_provider(oms::context* ctx, const std::string& type);
-void save(WorldState* worldState);
-WorldState* load(void);
+void save(WorldState* worldState, const std::string& file);
+WorldState* load(const std::string& file);
 
 //Factory Functions
 Engine* createEngine();
