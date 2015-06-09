@@ -140,11 +140,6 @@ std::string oms::read_string(oms::context* ctx){
 	return oms::io::read_string(ctx->ios);
 }
 
-bool oms::next_property(oms::context* ctx){
-	uint8_t gonogo=oms::io::read_uint8(ctx->ios);
-	return gonogo==1;
-}
-
 void* oms::read_object(oms::context* ctx, read_fn rfn){
 	//todo: first we would read the real object or ref signal here
 	std::cout << "ios pos " << ctx->ios->tellg() << std::endl;
@@ -182,6 +177,7 @@ void* oms::read_object(oms::context* ctx, read_fn rfn){
 
 		//pop stacks
 		ctx->ps.pop();
+		delete pm;
 
 		//seek back to our end point
 		ctx->ios->seekg(oend);

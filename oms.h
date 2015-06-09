@@ -50,22 +50,17 @@ namespace oms{
 	void write_integer(oms::context* ctx, int v);
 	void write_number(oms::context* ctx, double v);
 	void write_string(oms::context* ctx, const std::string& v);
-
 	void write_object(oms::context* ctx, void* o, const std::string& type, write_fn wfn);
 
+	bool read_boolean(oms::context* ctx);
+	int read_integer(oms::context* ctx);
+	double read_number(oms::context* ctx);
+	std::string read_string(oms::context* ctx);
+	void* read_object(oms::context* ctx, read_fn rfn);
 
 	bool check_property(oms::context* ctx, const std::string& name, uint8_t type);
 	bool check_type(oms::context* ctx, uint8_t type);
 	uint32_t check_size(oms::context* ctx, uint8_t type);
-	bool read_boolean(oms::context* ctx);
-	int read_integer(oms::context* ctx);
-	double read_number(oms::context* ctx);
-	void* read_object(oms::context* ctx, read_fn rfn);
-	std::string read_string(oms::context* ctx);
-
-	bool next_property(oms::context* ctx);
-
-	int8_t read_next(oms::context* ctx);
 
 	//primitive IO
 	namespace io{
