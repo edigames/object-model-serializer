@@ -200,7 +200,6 @@ void* oms::util::deep_copy(void* o, const std::string& type, oms::write_fn wfn, 
 	ctx=oms::open_context(&ss, 0);
 	oms::write_object(ctx, o, type, wfn);
 	oms::close_context(ctx);
-	ss.seekg(0);//rewind
 	ctx=oms::open_context(&ss, ifn);
 	void* o2=0;
 	if(oms::check_type(ctx,oms::type_object)){
