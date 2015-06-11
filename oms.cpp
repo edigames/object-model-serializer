@@ -19,7 +19,7 @@ void oms::close_context(oms::context* ctx){
 	ctx->env=0;
 }
 
-void oms::declare_object_info(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c){
+void oms::declare_object(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c){
 	oms::object_info td={r,w,c};
 	env->oim[class_name]=td;
 }
@@ -57,54 +57,12 @@ void oms::write_number(oms::context* ctx, double v){
 
 void oms::write_string(oms::context* ctx, const std::string& v){
 	oms::io::write_uint8(ctx->ios, type_string);
-	oms::io::write_uint32(ctx->ios, 4 + v.length());//write variable length (header+strlen)
 	oms::io::write_string(ctx->ios, v);
 }
 
-/*
-void oms::write_object(oms::context* ctx, void* o, const std::string& type, write_fn wfn){
-
-	oms::io::write_uint8(ctx->ios, type_object);
-	std::vector<void*>::iterator it=std::find(ctx->object_table.begin(), ctx->object_table.end(), o);
-	if(it!=ctx->object_table.end()){
-		std::cout << "saving object ref." << std::endl;
-		oms::io::write_uint32(ctx->ios,5);//size of 5, signal bool and index
-		oms::io::write_bool(ctx->ios,false);//false, not real object
-		oms::io::write_uint32(ctx->ios,ctx->object_table.size()-1);//index of object
-	}else{
-		//push new stream
-		std::stringstream* ss=new std::stringstream();
-		ctx->ioss.push(ctx->ios);
-		ctx->ios=ss;
-
-		std::cout << "saving a real object." << std::endl;
-		oms::io::write_bool(ctx->ios,true);//true, a real object follows
-		ctx->object_table.push_back(o);
-
-		//write type
-		oms::io::write_string(ctx->ios, type);
-
-		//delgate to writer
-		wfn(ctx,o);
-
-		//write trailing nogo byte (end of properties)
-		oms::io::write_uint8(ctx->ios, 0);
-
-		//pop stream
-		std::string str = ss->str();
-		delete ctx->ios;
-		ctx->ios=ctx->ioss.top();
-		ctx->ioss.pop();
-		oms::io::write_uint32(ctx->ios, str.length());//write variable length
-		ctx->ios->write(str.data(),str.length());//write object data
-	}
-}
-*/
 void oms::write_object(oms::context* ctx, void* o, const std::string& class_name){
 	oms::io::write_uint8(ctx->ios, type_object);//write object type
 	object_info* oi=oms::get_object_info(ctx->env, class_name);
-	std::streampos size_pos=ctx->ios->tellp();//record our location for the size header
-	oms::io::write_uint32(ctx->ios,0);//block-out space for size
 	if(oi&&o){//got an instance and object info?
 		//first time writing this instance?
 		std::vector<void*>::iterator it=std::find(ctx->object_table.begin(), ctx->object_table.end(), o);
@@ -116,34 +74,16 @@ void oms::write_object(oms::context* ctx, void* o, const std::string& class_name
 		}else{//yep, write the actual object
 			std::cout << "writing real object." << std::endl;
 			oms::io::write_uint8(ctx->ios,1);//1 a real object
-			ctx->object_table.push_back(o);//push into object_table for ref/cycle detection
 			oms::io::write_string(ctx->ios, class_name);//write type name
 			oi->w(ctx, o);//delegate to writer
 			oms::io::write_uint8(ctx->ios,0);//no-go byte
+			std::cout << "pushing object to table index " << ctx->object_table.size() << std::endl;
+			ctx->object_table.push_back(o);//push into object_table for ref/cycle detection
 		}
 	}else{
+		std::cout << "writing a null object." << std::endl;
 		oms::io::write_uint8(ctx->ios,0);//0 a null object
 	}
-	//all done writing, first record our position
-	std::streampos end_pos=ctx->ios->tellp();
-	//now jump-back to our blocked out size space
-	ctx->ios->seekp(size_pos);
-	//now, over-write our difference in length, minus 4 bytes for the size header
-	uint32_t size=(end_pos-size_pos)-4;
-	std::cout << "object write size is: " << size << std::endl;
-	oms::io::write_uint32(ctx->ios, size);
-	//finally jump back to the end
-	ctx->ios->seekp(end_pos);
-}
-
-bool oms::check_property(oms::context* ctx, const std::string& name, uint8_t type){
-	std::map<std::string,std::streampos>::iterator it=ctx->ps.top()->find(name);
-	if(it!=ctx->ps.top()->end()){
-		ctx->ios->seekg(it->second);
-		return oms::read_type(ctx, type);//check/reject type and eat size data
-	}
-	std::cout << "requested property '" << name <<"' of type " << (int)type << " not found!" << std::endl;
-	return false;
 }
 
 bool oms::read_type(oms::context* ctx, uint8_t type){
@@ -151,18 +91,7 @@ bool oms::read_type(oms::context* ctx, uint8_t type){
 	return t==type;
 }
 
-bool oms::check_type(oms::context* ctx, uint8_t type){
-	std::cout << "checking type, expecting  " << (int)type << std::endl;
-	uint8_t t = oms::io::read_uint8(ctx->ios);
-	uint32_t jmpsiz=check_size(ctx, t);
-	if(t!=type){
-		std::cout << "unexpected type, jumping " << jmpsiz << " bytes!" << std::endl;
-		ctx->ios->seekg(jmpsiz,std::ios::cur);
-	}
-	return t==type;
-}
-
-uint32_t oms::check_size(oms::context* ctx, uint8_t type){
+uint32_t oms::read_size(oms::context* ctx, uint8_t type){
 	std::cout << "checking size for type " << (int)type << std::endl;
 	uint32_t size=0;
 	switch(type){
@@ -176,7 +105,6 @@ uint32_t oms::check_size(oms::context* ctx, uint8_t type){
 		size=8;
 		break;
 	case oms::type_string:
-	case oms::type_object:
 		size=oms::io::read_uint32(ctx->ios);
 		break;
 	}
@@ -201,8 +129,10 @@ std::string oms::read_string(oms::context* ctx){
 
 void* oms::read_object(oms::context* ctx){
 	void* o=0;
+	std::cout << "preparing to read an object" << std::endl;
 	//is this a real object, or a reference?
 	uint8_t nor=oms::io::read_uint8(ctx->ios);
+	std::cout << "nor code is " << (int)nor << std::endl;
 	if(nor==1){
 		std::cout << "reading a real object" << std::endl;
 		//we have a real object!
@@ -211,28 +141,32 @@ void* oms::read_object(oms::context* ctx){
 		std::cout << "class_name is " << class_name << std::endl;
 		//get object info
 		object_info* oi=oms::get_object_info(ctx->env, class_name);
-		if(oi){
-			std::cout << "found object_info" << std::endl;
-			//class exists, create an instance
-			std::cout << "creating new instance of " << class_name << std::endl;
-			o=oi->c(ctx);
-			if(o){//did we get an instance?
-				std::cout << "reading properties" << std::endl;
-				while(oms::io::read_uint8(ctx->ios)){
-					std::string prop_name=oms::io::read_string(ctx->ios);
-					std::cout << "read back prop_name " << prop_name << std::endl;
-					uint8_t type=oms::io::read_uint8(ctx->ios);
-					uint32_t size=oms::check_size(ctx, type);
-					//delegate to reader
-					if(!oi->r(ctx, prop_name, o)){
-						std::cout << "property " << prop_name << " was ignored." << std::endl;
-						ctx->ios->seekg(size, std::ios::cur);
-					}
+		std::cout << "found object_info" << std::endl;
+		//class exists, create an instance
+		std::cout << "creating new instance of " << class_name << std::endl;
+		if(oi)o=oi->c(ctx);
+		std::cout << "reading properties" << std::endl;
+		while(oms::io::read_uint8(ctx->ios)){
+			std::string prop_name=oms::io::read_string(ctx->ios);
+			std::cout << "read back prop_name " << prop_name << std::endl;
+			uint8_t type=oms::io::read_uint8(ctx->ios);
+			//delegate to reader
+			bool read=false;
+			if(oi)read=oi->r(ctx, prop_name, o);
+			if(!read){
+				std::cout << "property " << prop_name << " was ignored." << std::endl;
+				if(type==oms::type_object){
+					std::cout << "ignored object was a container ...pretty important that we still deserialize this." << std::endl;
+					void* o2=oms::read_object(ctx);
+				}else{
+					uint32_t size=oms::read_size(ctx, type);
+					ctx->ios->seekg(size, std::ios::cur);
 				}
 			}
 		}
 		//push o into the object table, might be null
 		//if class doesnt exist, but this will keep the table balanced
+		std::cout << "pushing object to table index " << ctx->object_table.size() << std::endl;
 		ctx->object_table.push_back(o);
 	}else if(nor==2){//we have a reference
 		std::cout << "reading an object ref." << std::endl;
@@ -243,108 +177,58 @@ void* oms::read_object(oms::context* ctx){
 		//a null, no-op
 	}
 	return o;
-
-	//todo: first we would read the real object or ref signal here
-	//std::cout << "ios pos " << ctx->ios->tellg() << std::endl;
-
-	/*
-	if(oms::io::read_bool(ctx->ios)){
-		std::cout << "reading real object" << std::endl;
-		//read back type
-		std::string type=oms::io::read_string(ctx->ios);
-
-		//instantiate type
-		o=ctx->ifn(ctx, type);
-
-		//push into table
-		ctx->object_table.push_back(o);
-
-		std::map<std::string, std::streampos>* pm=new std::map<std::string, std::streampos>();
-		//scan and collect names and positions of properties
-		//poll go/nogo byte
-		while(oms::io::read_uint8(ctx->ios)){
-			std::string n=oms::io::read_string(ctx->ios);
-			pm->insert(std::pair<std::string,std::streampos>(n, ctx->ios->tellg()));
-			uint8_t type=oms::io::read_uint8(ctx->ios);
-			uint32_t size=oms::check_size(ctx,type);
-			ctx->ios->seekg(size,std::ios::cur);
-		}
-
-		//record where we are now
-		std::streampos oend=ctx->ios->tellg();
-
-		//load stacks
-		ctx->ps.push(pm);
-
-		//delegate to reader
-		rfn(ctx, o);
-
-		//pop stacks
-		ctx->ps.pop();
-		delete pm;
-
-		//seek back to our end point
-		ctx->ios->seekg(oend);
-	}else{
-		std::cout << "reading object reference" << std::endl;
-		//this is an object reference
-		uint32_t index=oms::io::read_uint32(ctx->ios);
-		o=ctx->object_table[index];
-	}
-	return o;
-	*/
 }
 
-/*
 //perform a deep copy of an object model by serialization
-void* oms::util::deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn){
-	std::stringstream ss;
-	oms::context* ctx=0;
-	ctx=oms::open_context(&ss, 0);
-	oms::write_object(ctx, o, type, wfn);
-	oms::close_context(ctx);
-	ctx=oms::open_context(&ss, ifn);
-	void* o2=0;
-	if(oms::check_type(ctx,oms::type_object)){
-		o2=oms::read_object(ctx, rfn);
-	}
-	oms::close_context(ctx);
-	return o2;
+void* oms::util::deep_copy(oms::environment* env, void* o, const std::string& class_name){
+	std::string data=oms::util::write_to_string(env, o, class_name);
+	return oms::util::read_from_string(env, data);
 }
 
-std::string oms::util::write_to_string(void* o, const std::string& type, oms::write_fn wfn){
+std::string oms::util::write_to_string(oms::environment* env, void* o, const std::string& class_name){
 	std::stringstream ss;
-	oms::context* ctx=0;
-	ctx=oms::open_context(&ss, 0);
-	oms::write_object(ctx, o, type, wfn);
-	oms::close_context(ctx);
+	oms::context ctx;
+	oms::open_context(&ctx, env, &ss);
+	oms::write_object(&ctx, o, class_name);
+	oms::close_context(&ctx);
 	return ss.str();
 }
 
-void oms::util::write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn){
+void* oms::util::read_from_string(oms::environment* env, const std::string& data){
+	std::stringstream ss(data);
+	oms::context ctx;
+	oms::open_context(&ctx, env, &ss);
+	void* o=0;
+	if(oms::read_type(&ctx, oms::type_object)){
+		o=oms::read_object(&ctx);
+	}
+	oms::close_context(&ctx);
+	return o;
+}
+
+void oms::util::write_to_file(oms::environment* env, const std::string& file, void* o, const std::string& class_name){
 	std::fstream f;
-	oms::context* ctx=0;
+	oms::context ctx;
 	f.open(file.c_str(),std::ios::out | std::ios::binary | std::ios::trunc);
-	ctx=oms::open_context(&f, 0);
-	oms::write_object(ctx, o, type, wfn);
-	oms::close_context(ctx);
+	oms::open_context(&ctx, env, &f);
+	oms::write_object(&ctx, o, class_name);
+	oms::close_context(&ctx);
 	f.close();
 }
 
-void* oms::util::read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn){
+void* oms::util::read_from_file(oms::environment* env, const std::string& file){
 	std::fstream f;
-	oms::context* ctx=0;
+	oms::context ctx;
 	f.open(file.c_str(),std::ios::in | std::ios::binary);
-	ctx=oms::open_context(&f, ifn);
+	oms::open_context(&ctx, env, &f);
 	void* o=0;
-	if(oms::check_type(ctx,oms::type_object)){
-		o=oms::read_object(ctx, rfn);
+	if(oms::read_type(&ctx, oms::type_object)){
+		o=oms::read_object(&ctx);
 	}
-	oms::close_context(ctx);
+	oms::close_context(&ctx);
 	f.close();
 	return o;
 }
-*/
 
 //primitive IO functions
 void oms::io::write_int8(std::ostream* os, int8_t v){
@@ -356,6 +240,7 @@ void oms::io::write_int16(std::ostream* os, int16_t v){
 }
 
 void oms::io::write_int32(std::ostream* os, int32_t v){
+	std::cout << "writing int32 " << v << std::endl;
 	os->write((char*)&v,4);
 }
 
@@ -414,6 +299,7 @@ int16_t oms::io::read_int16(std::istream* is){
 int32_t oms::io::read_int32(std::istream* is){
 	int32_t v;
 	is->read((char*)&v,4);
+	std::cout << "reading int32 " << v << std::endl;
 	return v;
 }
 

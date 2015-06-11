@@ -33,7 +33,7 @@ namespace oms{
 	struct context;
 
 	typedef bool (*read_fn)(oms::context*,const std::string&, void*);
-	typedef void (*write_fn)(oms::context*,void*);
+	typedef void (*write_fn)(oms::context*, void*);
 	typedef void* (*create_fn)(oms::context*);
 
 	struct object_info{
@@ -50,14 +50,12 @@ namespace oms{
 		oms::environment* env;//model environment
 		std::iostream* ios;
 		std::vector<void*> object_table;
-		std::stack<std::iostream*> ioss;//iostream stack
-		std::stack<std::map<std::string,std::streampos>*> ps;//property stack
 	};
 
 	void open_context(oms::context* ctx, oms::environment* env, std::iostream* ios);
 	void close_context(oms::context* ctx);
 
-	void declare_object_info(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c);
+	void declare_object(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c);
 	object_info* get_object_info(oms::environment* env, const std::string& class_name);
 
 	void write_property(oms::context* ctx, const std::string& name);
@@ -75,19 +73,17 @@ namespace oms{
 	void* read_object(oms::context* ctx);
 
 
-
-	bool check_property(oms::context* ctx, const std::string& name, uint8_t type);
-	bool check_type(oms::context* ctx, uint8_t type);
 	bool read_type(oms::context* ctx, uint8_t type);
-	uint32_t check_size(oms::context* ctx, uint8_t type);
+	uint32_t read_size(oms::context* ctx, uint8_t type);
 
 	//utility functions
 	namespace util{
 		//todo: write some one-liner-to/from-file functions, akin to C# 'readallbytes'
-		//void* deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn);
-		//std::string write_to_string(void* o, const std::string& type, oms::write_fn wfn);
-		//void write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn);
-		//void* read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn);
+		void* deep_copy(oms::environment* env, void* o, const std::string& class_name);
+		std::string write_to_string(oms::environment* env, void* o, const std::string& class_name);
+		void* read_from_string(oms::environment* env, const std::string& data);
+		void write_to_file(oms::environment* env, const std::string& file, void* o, const std::string& class_name);
+		void* read_from_file(oms::environment* env, const std::string& file);
 	}
 
 	//primitive IO

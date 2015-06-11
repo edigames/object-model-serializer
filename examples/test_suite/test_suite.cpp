@@ -36,13 +36,16 @@ class ClassA{
 public:
 	int my_int;
 	ClassB* my_nullb;
+	std::string my_str;
+	ClassB* my_firstb;
 	double my_num;
 	ClassB* my_b;
-	std::string my_str;
+
 
 	ClassA(){
 		my_int=1983;
 		my_b=0;
+		my_firstb=0;
 		my_nullb=0;
 		my_num=3.141592654;
 		my_str="hello world!";
@@ -53,6 +56,8 @@ public:
 	}
 
 	static bool read(oms::context* ctx, const std::string& prop_name, ClassA* o){
+		//note: purposefully not reading back, my_firstb
+		//to demonstrate first reference drop out
 		if(prop_name=="my_int"){
 			o->my_int=oms::read_integer(ctx);
 			return true;
@@ -80,6 +85,8 @@ public:
 		oms::write_integer(ctx, o->my_int);
 		oms::write_property(ctx, "my_nullb");
 		oms::write_object(ctx, o->my_nullb, "ClassB");
+		oms::write_property(ctx, "my_firstb");
+		oms::write_object(ctx, o->my_firstb, "ClassB");
 		oms::write_property(ctx, "my_num");
 		oms::write_number(ctx, o->my_num);
 		oms::write_property(ctx, "my_b");
@@ -98,36 +105,18 @@ public:
 bool test_deep_copy(oms::environment* env){
 	ClassA* a1=new ClassA();
 	a1->my_b=new ClassB();
-	ClassA* a2=0;
+	a1->my_firstb=a1->my_b;//will be seen first by serializer
 
-	oms::context* ctx=0;
-	std::stringstream ss;
+	std::cout << "performing deep copy..." << std::endl;
+	ClassA* a2=(ClassA*)oms::util::deep_copy(env, a1, "ClassA");
+	ClassA* a3=(ClassA*)oms::util::deep_copy(env, a2, "ClassA");
 
-	ctx=new oms::context();
-	oms::open_context(ctx, env, &ss);
-	oms::write_object(ctx, a1, "ClassA");
-	oms::close_context(ctx);
-	delete ctx;
-	ctx=0;
+	//std::cout << "performing write to string..." << std::endl;
+	std::string s1=oms::util::write_to_string(env, a2, "ClassA");
+	//std::cout << "performing write to string..." << std::endl;
+	std::string s2=oms::util::write_to_string(env, a3, "ClassA");
 
-	ctx=new oms::context();
-	oms::open_context(ctx, env, &ss);
-	if(oms::read_type(ctx, oms::type_object)){
-		uint32_t size=oms::check_size(ctx, oms::type_object);
-		a2=(ClassA*)oms::read_object(ctx);
-	}
-	oms::close_context(ctx);
-	delete ctx;
-	ctx=0;
-
-	if(a2)delete a2;
-	a2=0;
-
-	//ClassA* a2=(ClassA*)oms::util::deep_copy(a1, "ClassA", (oms::write_fn)ClassA::write,(oms::read_fn)ClassA::read,(oms::inst_fn)instantiation_provider);
-	//std::string s1=oms::util::write_to_string(a1, "ClassA", (oms::write_fn)ClassA::write);
-	//std::string s2=oms::util::write_to_string(a2, "ClassA", (oms::write_fn)ClassA::write);
-
-	return true;//s1.compare(s2)==0;
+	return s1.compare(s2)==0;
 }
 
 int main(void){
