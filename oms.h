@@ -55,7 +55,7 @@ namespace oms{
 	void open_context(oms::context* ctx, oms::environment* env, std::iostream* ios);
 	void close_context(oms::context* ctx);
 
-	void declare_object(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c);
+	void declare_object_info(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c);
 	object_info* get_object_info(oms::environment* env, const std::string& class_name);
 
 	void write_property(oms::context* ctx, const std::string& name);

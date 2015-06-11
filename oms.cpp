@@ -19,7 +19,7 @@ void oms::close_context(oms::context* ctx){
 	ctx->env=0;
 }
 
-void oms::declare_object(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c){
+void oms::declare_object_info(oms::environment* env, const std::string& class_name, oms::read_fn r, oms::write_fn w, oms::create_fn c){
 	oms::object_info td={r,w,c};
 	env->oim[class_name]=td;
 }

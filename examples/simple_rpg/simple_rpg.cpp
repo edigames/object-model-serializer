@@ -8,10 +8,10 @@ int main(void){
 	oms::environment env;
 
 	//declare object info, with linkage to readers, writers and creators
-	oms::declare_object(&env,"World",(oms::read_fn)World::read, (oms::write_fn)World::write, (oms::create_fn)World::create);
-	oms::declare_object(&env,"Character",(oms::read_fn)Character::read, (oms::write_fn)Character::write, (oms::create_fn)Character::create);
-	oms::declare_object(&env,"Hero",(oms::read_fn)Hero::read, (oms::write_fn)Hero::write, (oms::create_fn)Hero::create);
-	oms::declare_object(&env,"Item",(oms::read_fn)Item::read, (oms::write_fn)Item::write, (oms::create_fn)Item::create);
+	oms::declare_object_info(&env,"World",(oms::read_fn)World::read, (oms::write_fn)World::write, (oms::create_fn)World::create);
+	oms::declare_object_info(&env,"Character",(oms::read_fn)Character::read, (oms::write_fn)Character::write, (oms::create_fn)Character::create);
+	oms::declare_object_info(&env,"Hero",(oms::read_fn)Hero::read, (oms::write_fn)Hero::write, (oms::create_fn)Hero::create);
+	oms::declare_object_info(&env,"Item",(oms::read_fn)Item::read, (oms::write_fn)Item::write, (oms::create_fn)Item::create);
 
 	//create world
 	World* world=createWorld();
