@@ -101,40 +101,39 @@ void oms::write_object(oms::context* ctx, void* o, const std::string& type, writ
 }
 */
 void oms::write_object(oms::context* ctx, void* o, const std::string& class_name){
+	oms::io::write_uint8(ctx->ios, type_object);//write object type
 	object_info* oi=oms::get_object_info(ctx->env, class_name);
-	if(oi){
-		oms::io::write_uint8(ctx->ios, type_object);//write object type
-		std::streampos size_pos=ctx->ios->tellp();//record our location for the size header
-		oms::io::write_uint32(ctx->ios,0);//block-out space for size
+	std::streampos size_pos=ctx->ios->tellp();//record our location for the size header
+	oms::io::write_uint32(ctx->ios,0);//block-out space for size
+	if(oi&&o){//got an instance and object info?
 		//first time writing this instance?
 		std::vector<void*>::iterator it=std::find(ctx->object_table.begin(), ctx->object_table.end(), o);
 		if(it!=ctx->object_table.end()){
 			//nope, let's write a ref instead
-			std::cout << "saving object ref." << std::endl;
-			oms::io::write_bool(ctx->ios,false);//false, not real object
+			std::cout << "writing object ref." << std::endl;
+			oms::io::write_uint8(ctx->ios,2);//2 a reference
 			oms::io::write_uint32(ctx->ios,ctx->object_table.size()-1);//index of object
 		}else{//yep, write the actual object
-			oms::io::write_bool(ctx->ios,true);//true, a real object
+			std::cout << "writing real object." << std::endl;
+			oms::io::write_uint8(ctx->ios,1);//1 a real object
 			ctx->object_table.push_back(o);//push into object_table for ref/cycle detection
 			oms::io::write_string(ctx->ios, class_name);//write type name
 			oi->w(ctx, o);//delegate to writer
 			oms::io::write_uint8(ctx->ios,0);//no-go byte
 		}
-		//all done writing, first record our position
-		std::streampos end_pos=ctx->ios->tellp();
-		//now jump-back to our blocked out size space
-		ctx->ios->seekp(size_pos);
-		//now, over-write our difference in length, minus 4 bytes for the size header
-		uint32_t size=(end_pos-size_pos)-4;
-		std::cout << "object write size is: " << size << std::endl;
-		oms::io::write_uint32(ctx->ios, size);
-
-
-		//finally jump back to the end
-		ctx->ios->seekp(end_pos);
-	}else{//no type? write a null
-		oms::write_null(ctx);
+	}else{
+		oms::io::write_uint8(ctx->ios,0);//0 a null object
 	}
+	//all done writing, first record our position
+	std::streampos end_pos=ctx->ios->tellp();
+	//now jump-back to our blocked out size space
+	ctx->ios->seekp(size_pos);
+	//now, over-write our difference in length, minus 4 bytes for the size header
+	uint32_t size=(end_pos-size_pos)-4;
+	std::cout << "object write size is: " << size << std::endl;
+	oms::io::write_uint32(ctx->ios, size);
+	//finally jump back to the end
+	ctx->ios->seekp(end_pos);
 }
 
 bool oms::check_property(oms::context* ctx, const std::string& name, uint8_t type){
@@ -179,7 +178,7 @@ uint32_t oms::check_size(oms::context* ctx, uint8_t type){
 	case oms::type_string:
 	case oms::type_object:
 		size=oms::io::read_uint32(ctx->ios);
-		ctx->ios->seekg(-4, std::ios::cur);//rewind
+		break;
 	}
 	return size;
 }
@@ -202,43 +201,46 @@ std::string oms::read_string(oms::context* ctx){
 
 void* oms::read_object(oms::context* ctx){
 	void* o=0;
-	uint32_t size=oms::io::read_uint32(ctx->ios);
-	std::cout << "object read size is: " << size << std::endl;
 	//is this a real object, or a reference?
-	if(oms::io::read_bool(ctx->ios)){
+	uint8_t nor=oms::io::read_uint8(ctx->ios);
+	if(nor==1){
+		std::cout << "reading a real object" << std::endl;
 		//we have a real object!
 		//read class name
 		std::string class_name=oms::io::read_string(ctx->ios);
+		std::cout << "class_name is " << class_name << std::endl;
 		//get object info
 		object_info* oi=oms::get_object_info(ctx->env, class_name);
 		if(oi){
-			std::map<std::string, std::streampos>* pm=new std::map<std::string, std::streampos>();
-			//scan and collect names and positions of properties
-			//poll go/nogo byte
-			while(oms::io::read_uint8(ctx->ios)){
-				std::string prop_name=oms::io::read_string(ctx->ios);
-				pm->insert(std::pair<std::string,std::streampos>(prop_name, ctx->ios->tellg()));
-				uint8_t type=oms::io::read_uint8(ctx->ios);
-				uint32_t jump_size=oms::check_size(ctx, type);
-				ctx->ios->seekg(jump_size, std::ios::cur);
-			}
-
-			//record where we are now
-			std::streampos oend=ctx->ios->tellg();
-
+			std::cout << "found object_info" << std::endl;
 			//class exists, create an instance
+			std::cout << "creating new instance of " << class_name << std::endl;
 			o=oi->c(ctx);
 			if(o){//did we get an instance?
-				oi->r(ctx, o);//delegate to reader
+				std::cout << "reading properties" << std::endl;
+				while(oms::io::read_uint8(ctx->ios)){
+					std::string prop_name=oms::io::read_string(ctx->ios);
+					std::cout << "read back prop_name " << prop_name << std::endl;
+					uint8_t type=oms::io::read_uint8(ctx->ios);
+					uint32_t size=oms::check_size(ctx, type);
+					//delegate to reader
+					if(!oi->r(ctx, prop_name, o)){
+						std::cout << "property " << prop_name << " was ignored." << std::endl;
+						ctx->ios->seekg(size, std::ios::cur);
+					}
+				}
 			}
 		}
 		//push o into the object table, might be null
 		//if class doesnt exist, but this will keep the table balanced
 		ctx->object_table.push_back(o);
-	}else{//we have a reference
+	}else if(nor==2){//we have a reference
+		std::cout << "reading an object ref." << std::endl;
 		//read index
 		uint32_t index=oms::io::read_uint32(ctx->ios);
 		o=ctx->object_table[index];//set o to reference in table
+	}else{
+		//a null, no-op
 	}
 	return o;
 

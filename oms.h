@@ -32,8 +32,7 @@ namespace oms{
 	struct environment;
 	struct context;
 
-	typedef void* (*inst_fn)(oms::context*,const std::string& name);
-	typedef void (*read_fn)(oms::context*,void*);
+	typedef bool (*read_fn)(oms::context*,const std::string&, void*);
 	typedef void (*write_fn)(oms::context*,void*);
 	typedef void* (*create_fn)(oms::context*);
 
@@ -85,10 +84,10 @@ namespace oms{
 	//utility functions
 	namespace util{
 		//todo: write some one-liner-to/from-file functions, akin to C# 'readallbytes'
-		void* deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn);
-		std::string write_to_string(void* o, const std::string& type, oms::write_fn wfn);
-		void write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn);
-		void* read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn);
+		//void* deep_copy(void* o, const std::string& type, oms::write_fn wfn, oms::read_fn rfn, oms::inst_fn ifn);
+		//std::string write_to_string(void* o, const std::string& type, oms::write_fn wfn);
+		//void write_to_file(const std::string& file, void* o, const std::string& type, oms::write_fn wfn);
+		//void* read_from_file(const std::string& file, const std::string& type, oms::read_fn rfn, oms::inst_fn ifn);
 	}
 
 	//primitive IO
