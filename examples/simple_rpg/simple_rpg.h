@@ -17,7 +17,6 @@ class Hero;
 class Item;
 
 //function decl.
-void* instantiation_provider(oms::context* ctx, const std::string& type);
 void save(World* world);
 World* load(void);
 
@@ -31,8 +30,9 @@ public:
 	std::vector<Character*> npcs;
 	World();
 	virtual ~World();
+	static bool read(oms::context* ctx, const std::string& class_name, World* o);
 	static void write(oms::context* ctx, World* o);
-	static void read(oms::context* ctx, World* o);
+	static void* create(oms::context* ctx);
 };
 
 class Character{
@@ -41,8 +41,9 @@ public:
 	Character();
 	virtual ~Character();
 	virtual std::string getTypeName(void);
+	static bool read(oms::context* ctx, const std::string& class_name, Character* o);
 	static void write(oms::context* ctx, Character* o);
-	static void read(oms::context* ctx, Character* o);
+	static void* create(oms::context* ctx);
 };
 
 class Hero: public Character{
@@ -53,16 +54,18 @@ public:
 	Hero();
 	virtual ~Hero();
 	std::string getTypeName(void);
+	static bool read(oms::context* ctx, const std::string& class_name, Hero* o);
 	static void write(oms::context* ctx, Hero* o);
-	static void read(oms::context* ctx, Hero* o);
+	static void* create(oms::context* ctx);
 };
 
 class Item{
 public:
 	Item();
 	virtual ~Item();
+	static bool read(oms::context* ctx, const std::string& class_name, Item* o);
 	static void write(oms::context* ctx, Item* o);
-	static void read(oms::context* ctx, Item* o);
+	static void* create(oms::context* ctx);
 };
 
 

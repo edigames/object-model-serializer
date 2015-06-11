@@ -4,29 +4,34 @@
 #include <sstream>
 
 int main(void){
+	//should only need one shared env per application
+	oms::environment env;
+
+	//declare object info, with linkage to readers, writers and creators
+	oms::declare_object(&env,"World",(oms::read_fn)World::read, (oms::write_fn)World::write, (oms::create_fn)World::create);
+	oms::declare_object(&env,"Character",(oms::read_fn)Character::read, (oms::write_fn)Character::write, (oms::create_fn)Character::create);
+	oms::declare_object(&env,"Hero",(oms::read_fn)Hero::read, (oms::write_fn)Hero::write, (oms::create_fn)Hero::create);
+	oms::declare_object(&env,"Item",(oms::read_fn)Item::read, (oms::write_fn)Item::write, (oms::create_fn)Item::create);
+
 	//create world
 	World* world=createWorld();
 
 	//save object model
-	oms::util::write_to_file("file.bin",world,"World",(oms::write_fn)World::write);
+	oms::util::write_to_file(&env, "file.bin", world, "World");
 
 	std::cout << std::endl << std::endl; //gimme some space
 
 	//reload object model
-	World* newWorld=(World*)oms::util::read_from_file("file.bin","World",(oms::read_fn)World::read,(oms::inst_fn)instantiation_provider);
+	World* newWorld=(World*)oms::util::read_from_file(&env, "file.bin");
 
-	delete world;
-	world=0;
-	return 0;
-}
+	//sanity check
+	std::string s1=oms::util::write_to_string(&env, world, "World");
+	std::string s2=oms::util::write_to_string(&env, newWorld, "World");
 
-void* instantiation_provider(oms::context* ctx, const std::string& type){
-	std::cout << "providing type '" << type << "'" << std::endl;
-	if(type=="World")return new World();
-	if(type=="Character")return new Character();
-	if(type=="Hero")return new Hero();
-	if(type=="Item")return new Item();
-	std::cout << "type '" << type << "' not found!" << std::endl;
+	std::cout << "sanity check " << (s1.compare(s2)==0 ? "PASS" : "FAIL!") << std::endl;
+
+	delete world; world=0;
+	delete newWorld; newWorld=0;
 	return 0;
 }
 
@@ -52,6 +57,18 @@ World* createWorld(){
 	return world;
 }
 
+bool World::read(oms::context* ctx, const std::string& class_name, World* o){
+	std::cout << "World::read called." << std::endl;
+	if(class_name=="initialized"){
+		o->initialized=oms::read_boolean(ctx);
+		return true;
+	}else if(class_name=="hero"){
+		o->hero=(Hero*)oms::read_object(ctx);
+		return true;
+	}
+	return false;
+}
+
 void World::write(oms::context* ctx, World* o){
 	std::cout << "World::write called." << std::endl;
 
@@ -59,22 +76,14 @@ void World::write(oms::context* ctx, World* o){
 	oms::write_boolean(ctx, o->initialized);
 
 	oms::write_property(ctx, "hero");
-	oms::write_object(ctx, o->hero, o->hero->getTypeName(), (oms::write_fn)Hero::write);
+	oms::write_object(ctx, o->hero, o->hero->getTypeName());
 
 	oms::write_property(ctx, "writtenButNeverRead");
 	oms::write_boolean(ctx, false);
 }
 
-void World::read(oms::context* ctx, World* o){
-	std::cout << "World::read called." << std::endl;
-
-	if(oms::check_property(ctx, "initialized", oms::type_boolean)){
-		o->initialized=oms::read_boolean(ctx);
-	}
-
-	if(oms::check_property(ctx, "hero", oms::type_object)){
-		o->hero=(Hero*)oms::read_object(ctx,(oms::read_fn)Hero::read);
-	}
+void* World::create(oms::context* ctx){
+	return new World();
 }
 
 World::World(){
@@ -97,20 +106,25 @@ std::string Character::getTypeName(){
 	return "Character";
 }
 
+bool Character::read(oms::context* ctx, const std::string& class_name, Character* o){
+	std::cout << "Character::read called." << std::endl;
+	if(class_name=="inventoryItemsZero"){
+		Item* it=(Item*)oms::read_object(ctx);
+		o->inventoryItems.push_back(it);
+		return true;
+	}
+	return false;
+}
+
 void Character::write(oms::context* ctx, Character* o){
 	std::cout << "Character::write called." << std::endl;
 	oms::write_property(ctx,"inventoryItemsZero");
-	oms::write_object(ctx, o->inventoryItems[0], "Item", (oms::write_fn)Item::write);
+	oms::write_object(ctx, o->inventoryItems[0], "Item");
 
 }
 
-void Character::read(oms::context* ctx, Character* o){
-	std::cout << "Character::read called." << std::endl;
-	if(oms::check_property(ctx,"inventoryItemsZero", oms::type_object)){
-		Item* it=(Item*)oms::read_object(ctx, (oms::read_fn)Item::read);
-		o->inventoryItems.push_back(it);
-	}
-
+void* Character::create(oms::context* ctx){
+	return new Character();
 }
 
 Hero::Hero():Character(){
@@ -125,6 +139,26 @@ std::string Hero::getTypeName(){
 	return "Hero";
 }
 
+bool Hero::read(oms::context* ctx, const std::string& class_name, Hero* o){
+	//call to super, if true, propegate true
+	if(Character::read(ctx, class_name, o))return true;
+	std::cout << "Hero::read called." << std::endl;
+	if(class_name=="imNewHere"){
+		o->xp=oms::read_integer(ctx);
+		return true;
+	}else if(class_name=="name"){
+		o->name=oms::read_string(ctx);
+		return true;
+	}else if(class_name=="xp"){
+		o->xp=oms::read_integer(ctx);
+		return true;
+	}else if(class_name=="leftHandItem"){
+		o->leftHandItem=(Item*)oms::read_object(ctx);
+		return true;
+	}
+	return false;
+}
+
 void Hero::write(oms::context* ctx, Hero* o){
 	Character::write(ctx, o);//call to super
 	std::cout << "Hero::write called." << std::endl;
@@ -133,28 +167,11 @@ void Hero::write(oms::context* ctx, Hero* o){
 	oms::write_property(ctx,"name");
 	oms::write_string(ctx,o->name);
 	oms::write_property(ctx,"leftHandItem");
-	oms::write_object(ctx, o->leftHandItem, "Item", (oms::write_fn)Item::write);
+	oms::write_object(ctx, o->leftHandItem, "Item");
 }
 
-void Hero::read(oms::context* ctx, Hero* o){
-	Character::read(ctx, o);//call to super
-	std::cout << "Hero::read called." << std::endl;
-
-	if(oms::check_property(ctx,"imNewHere",oms::type_integer)){
-			o->xp=oms::read_integer(ctx);
-	}
-
-	if(oms::check_property(ctx,"name",oms::type_string)){
-		o->name=oms::read_string(ctx);
-	}
-
-	if(oms::check_property(ctx,"xp",oms::type_integer)){
-		o->xp=oms::read_integer(ctx);
-	}
-
-	if(oms::check_property(ctx,"leftHandItem",oms::type_object)){
-		o->leftHandItem=(Item*)oms::read_object(ctx,(oms::read_fn)Item::read);
-	}
+void* Hero::create(oms::context* ctx){
+	return new Hero();
 }
 
 Item::Item(){
@@ -165,11 +182,14 @@ Item::~Item(){
 
 }
 
+bool Item::read(oms::context* ctx, const std::string& class_name, Item* o){
+	std::cout << "Item::read called." << std::endl;
+}
+
 void Item::write(oms::context* ctx, Item* o){
 	std::cout << "Item::write called." << std::endl;
 }
 
-void Item::read(oms::context* ctx, Item* o){
-	std::cout << "Item::read called." << std::endl;
+void* Item::create(oms::context* ctx){
+	return new Item();
 }
-
