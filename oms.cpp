@@ -41,8 +41,7 @@ void oms::write_null(oms::context* ctx){
 }
 
 void oms::write_boolean(oms::context* ctx, bool v){
-	oms::io::write_uint8(ctx->ios,oms::type_boolean);
-	oms::io::write_bool(ctx->ios, v);
+	oms::io::write_uint8(ctx->ios,v ? oms::type_true : oms::type_false);
 }
 
 void oms::write_integer(oms::context* ctx, int v){
@@ -68,22 +67,23 @@ void oms::write_object(oms::context* ctx, void* o, const std::string& class_name
 		std::vector<void*>::iterator it=std::find(ctx->object_table.begin(), ctx->object_table.end(), o);
 		if(it!=ctx->object_table.end()){
 			//nope, let's write a ref instead
-			std::cout << "writing object ref." << std::endl;
 			oms::io::write_uint8(ctx->ios,2);//2 a reference
 			oms::io::write_uint32(ctx->ios,ctx->object_table.size()-1);//index of object
 		}else{//yep, write the actual object
-			std::cout << "writing real object." << std::endl;
 			oms::io::write_uint8(ctx->ios,1);//1 a real object
 			oms::io::write_string(ctx->ios, class_name);//write type name
 			oi->w(ctx, o);//delegate to writer
 			oms::io::write_uint8(ctx->ios,0);//no-go byte
-			std::cout << "pushing object to table index " << ctx->object_table.size() << std::endl;
 			ctx->object_table.push_back(o);//push into object_table for ref/cycle detection
 		}
 	}else{
-		std::cout << "writing a null object." << std::endl;
 		oms::io::write_uint8(ctx->ios,0);//0 a null object
 	}
+}
+
+void oms::write_array(oms::context* ctx, uint32_t count){
+	oms::io::write_uint8(ctx->ios, type_array);
+	oms::io::write_uint32(ctx->ios, count);
 }
 
 bool oms::read_type(oms::context* ctx, uint8_t type){
@@ -91,11 +91,15 @@ bool oms::read_type(oms::context* ctx, uint8_t type){
 	return t==type;
 }
 
+uint8_t oms::peek_type(oms::context* ctx){
+	return ctx->ios->peek();
+}
+
 uint32_t oms::read_size(oms::context* ctx, uint8_t type){
-	std::cout << "checking size for type " << (int)type << std::endl;
 	uint32_t size=0;
 	switch(type){
-	case oms::type_boolean:
+	case oms::type_true:
+	case oms::type_false:
 		size=1;
 		break;
 	case oms::type_integer:
@@ -129,47 +133,52 @@ std::string oms::read_string(oms::context* ctx){
 
 void* oms::read_object(oms::context* ctx){
 	void* o=0;
-	std::cout << "preparing to read an object" << std::endl;
 	//is this a real object, or a reference?
 	uint8_t nor=oms::io::read_uint8(ctx->ios);
-	std::cout << "nor code is " << (int)nor << std::endl;
 	if(nor==1){
-		std::cout << "reading a real object" << std::endl;
 		//we have a real object!
 		//read class name
 		std::string class_name=oms::io::read_string(ctx->ios);
-		std::cout << "class_name is " << class_name << std::endl;
 		//get object info
 		object_info* oi=oms::get_object_info(ctx->env, class_name);
-		std::cout << "found object_info" << std::endl;
 		//class exists, create an instance
-		std::cout << "creating new instance of " << class_name << std::endl;
 		if(oi)o=oi->c(ctx);
-		std::cout << "reading properties" << std::endl;
 		while(oms::io::read_uint8(ctx->ios)){
 			std::string prop_name=oms::io::read_string(ctx->ios);
-			std::cout << "read back prop_name " << prop_name << std::endl;
 			uint8_t type=oms::io::read_uint8(ctx->ios);
 			//delegate to reader
 			bool read=false;
 			if(oi)read=oi->r(ctx, prop_name, o);
-			if(!read){
-				std::cout << "property " << prop_name << " was ignored." << std::endl;
-				if(type==oms::type_object){
-					std::cout << "ignored object was a container ...pretty important that we still deserialize this." << std::endl;
-					void* o2=oms::read_object(ctx);
-				}else{
+
+			//BIG TODO: probably need to encapsulate the !read area into one big 'skipper function' that can be called recursively
+			//as arrays of arrays will cause this problem
+			//that we already see in objects with objects
+
+			if(!read){//user failed to read property ...need to act accordingly
+				switch(type){
+				case oms::type_object:
+					oms::read_object(ctx);//recurse
+					break;
+				case oms::type_array:
+					{
+						std::cout << "failed to read array!" << std::endl;
+						uint32_t count=oms::read_array(ctx);
+						for(int i=0;i<count;++i){
+
+						}
+					}
+					break;
+				default://skip type based on length
 					uint32_t size=oms::read_size(ctx, type);
 					ctx->ios->seekg(size, std::ios::cur);
+					break;
 				}
 			}
 		}
 		//push o into the object table, might be null
 		//if class doesnt exist, but this will keep the table balanced
-		std::cout << "pushing object to table index " << ctx->object_table.size() << std::endl;
 		ctx->object_table.push_back(o);
 	}else if(nor==2){//we have a reference
-		std::cout << "reading an object ref." << std::endl;
 		//read index
 		uint32_t index=oms::io::read_uint32(ctx->ios);
 		o=ctx->object_table[index];//set o to reference in table
@@ -177,6 +186,11 @@ void* oms::read_object(oms::context* ctx){
 		//a null, no-op
 	}
 	return o;
+}
+
+uint32_t oms::read_array(oms::context* ctx){
+	uint32_t count=oms::io::read_uint32(ctx->ios);
+	return count;
 }
 
 //perform a deep copy of an object model by serialization
@@ -240,7 +254,6 @@ void oms::io::write_int16(std::ostream* os, int16_t v){
 }
 
 void oms::io::write_int32(std::ostream* os, int32_t v){
-	std::cout << "writing int32 " << v << std::endl;
 	os->write((char*)&v,4);
 }
 
@@ -299,7 +312,6 @@ int16_t oms::io::read_int16(std::istream* is){
 int32_t oms::io::read_int32(std::istream* is){
 	int32_t v;
 	is->read((char*)&v,4);
-	std::cout << "reading int32 " << v << std::endl;
 	return v;
 }
 

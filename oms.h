@@ -20,19 +20,20 @@
 namespace oms{
 	const uint8_t type_unknown=0;
 	const uint8_t type_object=1;
-	const uint8_t type_boolean=2;
-	const uint8_t type_null=3;
-	const uint8_t type_integer=4;
-	const uint8_t type_number=5;
-	const uint8_t type_string=6;
-	const uint8_t type_array=7;
-	const uint8_t type_map=8;
+	const uint8_t type_true=2;
+	const uint8_t type_false=3;
+	const uint8_t type_null=4;
+	const uint8_t type_integer=5;
+	const uint8_t type_number=6;
+	const uint8_t type_string=7;
+	const uint8_t type_array=8;
+	const uint8_t type_map=9;
 
 	struct object_info;
 	struct environment;
 	struct context;
 
-	typedef bool (*read_fn)(oms::context*,const std::string&, void*);
+	typedef bool (*read_fn)(oms::context*, const std::string&, void*);
 	typedef void (*write_fn)(oms::context*, void*);
 	typedef void* (*create_fn)(oms::context*);
 
@@ -47,9 +48,10 @@ namespace oms{
 	};
 
 	struct context{
-		oms::environment* env;//model environment
+		oms::environment* env;
 		std::iostream* ios;
 		std::vector<void*> object_table;
+		//todo: table strings too
 	};
 
 	void open_context(oms::context* ctx, oms::environment* env, std::iostream* ios);
@@ -65,20 +67,21 @@ namespace oms{
 	void write_number(oms::context* ctx, double v);
 	void write_string(oms::context* ctx, const std::string& v);
 	void write_object(oms::context* ctx, void* o, const std::string& class_name);
+	void write_array(oms::context* ctx, uint32_t count);
 
 	bool read_boolean(oms::context* ctx);
 	int read_integer(oms::context* ctx);
 	double read_number(oms::context* ctx);
 	std::string read_string(oms::context* ctx);
 	void* read_object(oms::context* ctx);
-
+	uint32_t read_array(oms::context* ctx);
 
 	bool read_type(oms::context* ctx, uint8_t type);
+	uint8_t peek_type(oms::context* ctx);
 	uint32_t read_size(oms::context* ctx, uint8_t type);
 
 	//utility functions
 	namespace util{
-		//todo: write some one-liner-to/from-file functions, akin to C# 'readallbytes'
 		void* deep_copy(oms::environment* env, void* o, const std::string& class_name);
 		std::string write_to_string(oms::environment* env, void* o, const std::string& class_name);
 		void* read_from_string(oms::environment* env, const std::string& data);
