@@ -86,6 +86,11 @@ void oms::write_array(oms::context* ctx, uint32_t count){
 	oms::io::write_uint32(ctx->ios, count);
 }
 
+void oms::write_map(oms::context* ctx, uint32_t count){
+	oms::io::write_uint8(ctx->ios, type_map);
+	oms::io::write_uint32(ctx->ios, count);
+}
+
 bool oms::read_type(oms::context* ctx, uint8_t type){
 	uint8_t t = oms::io::read_uint8(ctx->ios);
 	return t==type;
@@ -149,31 +154,7 @@ void* oms::read_object(oms::context* ctx){
 			//delegate to reader
 			bool read=false;
 			if(oi)read=oi->r(ctx, prop_name, o);
-
-			//BIG TODO: probably need to encapsulate the !read area into one big 'skipper function' that can be called recursively
-			//as arrays of arrays will cause this problem
-			//that we already see in objects with objects
-
-			if(!read){//user failed to read property ...need to act accordingly
-				switch(type){
-				case oms::type_object:
-					oms::read_object(ctx);//recurse
-					break;
-				case oms::type_array:
-					{
-						std::cout << "failed to read array!" << std::endl;
-						uint32_t count=oms::read_array(ctx);
-						for(int i=0;i<count;++i){
-
-						}
-					}
-					break;
-				default://skip type based on length
-					uint32_t size=oms::read_size(ctx, type);
-					ctx->ios->seekg(size, std::ios::cur);
-					break;
-				}
-			}
+			if(!read)oms::consume(ctx, type);
 		}
 		//push o into the object table, might be null
 		//if class doesnt exist, but this will keep the table balanced
@@ -191,6 +172,43 @@ void* oms::read_object(oms::context* ctx){
 uint32_t oms::read_array(oms::context* ctx){
 	uint32_t count=oms::io::read_uint32(ctx->ios);
 	return count;
+}
+
+uint32_t oms::read_map(oms::context* ctx){
+	uint32_t count=oms::io::read_uint32(ctx->ios);
+	return count;
+}
+
+void oms::consume(oms::context* ctx, uint8_t type){
+	switch(type){
+	case oms::type_object:
+		oms::read_object(ctx);
+		break;
+	case oms::type_array:
+		{
+			uint32_t count=oms::read_array(ctx);
+			for(int i=0;i<count;++i){
+				uint8_t type2=oms::io::read_uint8(ctx->ios);
+				oms::consume(ctx, type2);
+			}
+		}
+		break;
+	case oms::type_map:
+		{
+			uint32_t count=oms::read_array(ctx);
+			for(int i=0;i<count;++i){
+				uint8_t ktype=oms::io::read_uint8(ctx->ios);
+				oms::consume(ctx, ktype);
+				uint8_t vtype=oms::io::read_uint8(ctx->ios);
+				oms::consume(ctx, vtype);
+			}
+		}
+		break;
+	default://skip type based on length
+		uint32_t size=oms::read_size(ctx, type);
+		ctx->ios->seekg(size, std::ios::cur);
+		break;
+	}
 }
 
 //perform a deep copy of an object model by serialization

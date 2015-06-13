@@ -41,6 +41,7 @@ public:
 	ClassB* my_firstb;
 	double my_num;
 	ClassB* my_b;
+	std::map<std::string,std::string> my_map;
 
 
 	ClassA(){
@@ -76,6 +77,20 @@ public:
 		}else if(prop_name=="my_str"){
 			o->my_str=oms::read_string(ctx);
 			return true;
+		}else if(prop_name=="int_array"){
+			uint32_t count=oms::read_array(ctx);
+			for(uint32_t i=0;i<count;++i){
+				o->int_array.push_back(oms::read_integer(ctx));
+			}
+			return true;
+		}else if(prop_name=="my_map"){
+			uint32_t count=oms::read_map(ctx);
+			for(uint32_t i=0;i<count;++i){
+				std::string key=oms::read_string(ctx);
+				std::string value=oms::read_string(ctx);
+				o->my_map[key]=value;
+			}
+			return true;
 		}
 		return false;
 	}
@@ -96,20 +111,28 @@ public:
 		oms::write_property(ctx, "my_b");
 		oms::write_object(ctx, o->my_b, "ClassB");
 
-		/*todo: arrays, work in progress
 		oms::write_property(ctx, "int_array");
 		oms::write_array(ctx, o->int_array.size());
 		std::vector<int>::iterator it=o->int_array.begin();
 		while(it!=o->int_array.end()){
 			oms::write_integer(ctx,*it);
 			++it;
-		}*/
+		}
 
 		oms::write_property(ctx, "my_str");
 		oms::write_string(ctx, o->my_str);
 
 		oms::write_property(ctx, "never_read");
 		oms::write_string(ctx, "never read back");
+
+		oms::write_property(ctx, "my_map");
+		oms::write_map(ctx, o->my_map.size());
+		std::map<std::string,std::string>::iterator it2=o->my_map.begin();
+		while(it2!=o->my_map.end()){
+			oms::write_string(ctx,it2->first);
+			oms::write_string(ctx,it2->second);
+			++it2;
+		}
 	}
 
 	static void* create(oms::context* ctx){
@@ -128,6 +151,9 @@ ClassA* make_model_a(){
 	a->my_b=new ClassB();
 	a->my_b->poodle=778;
 	a->my_firstb=a->my_b;
+	a->my_map["larry"]="one";
+	a->my_map["moe"]="two";
+	a->my_map["curly"]="three";
 	return a;
 }
 

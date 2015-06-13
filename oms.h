@@ -68,6 +68,7 @@ namespace oms{
 	void write_string(oms::context* ctx, const std::string& v);
 	void write_object(oms::context* ctx, void* o, const std::string& class_name);
 	void write_array(oms::context* ctx, uint32_t count);
+	void write_map(oms::context* ctx, uint32_t count);
 
 	bool read_boolean(oms::context* ctx);
 	int read_integer(oms::context* ctx);
@@ -75,6 +76,9 @@ namespace oms{
 	std::string read_string(oms::context* ctx);
 	void* read_object(oms::context* ctx);
 	uint32_t read_array(oms::context* ctx);
+	uint32_t read_map(oms::context* ctx);
+
+	void consume(oms::context* ctx, uint8_t type);
 
 	bool read_type(oms::context* ctx, uint8_t type);
 	uint8_t peek_type(oms::context* ctx);
