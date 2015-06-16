@@ -19,8 +19,6 @@ int main(void){
 	//save object model
 	oms::util::write_to_file(&env, "file.bin", world, "World");
 
-	std::cout << std::endl << std::endl; //gimme some space
-
 	//reload object model
 	World* newWorld=(World*)oms::util::read_from_file(&env, "file.bin");
 
@@ -57,12 +55,12 @@ World* createWorld(){
 	return world;
 }
 
-bool World::read(oms::context* ctx, const std::string& class_name, World* o){
-	std::cout << "World::read called." << std::endl;
-	if(class_name=="initialized"){
+bool World::read(oms::context* ctx, const std::string& prop_name, World* o){
+	std::cout << "World::read called" << std::endl;
+	if(prop_name=="initialized"){
 		o->initialized=oms::read_boolean(ctx);
 		return true;
-	}else if(class_name=="hero"){
+	}else if(prop_name=="hero"){
 		o->hero=(Hero*)oms::read_object(ctx);
 		return true;
 	}
@@ -106,9 +104,9 @@ std::string Character::getTypeName(){
 	return "Character";
 }
 
-bool Character::read(oms::context* ctx, const std::string& class_name, Character* o){
+bool Character::read(oms::context* ctx, const std::string& prop_name, Character* o){
 	std::cout << "Character::read called." << std::endl;
-	if(class_name=="inventoryItemsZero"){
+	if(prop_name=="inventoryItemsZero"){
 		Item* it=(Item*)oms::read_object(ctx);
 		o->inventoryItems.push_back(it);
 		return true;
@@ -139,20 +137,17 @@ std::string Hero::getTypeName(){
 	return "Hero";
 }
 
-bool Hero::read(oms::context* ctx, const std::string& class_name, Hero* o){
+bool Hero::read(oms::context* ctx, const std::string& prop_name, Hero* o){
 	//call to super, if true, propegate true
-	if(Character::read(ctx, class_name, o))return true;
+	if(Character::read(ctx, prop_name, o))return true;
 	std::cout << "Hero::read called." << std::endl;
-	if(class_name=="imNewHere"){
-		o->xp=oms::read_integer(ctx);
-		return true;
-	}else if(class_name=="name"){
+	if(prop_name=="name"){
 		o->name=oms::read_string(ctx);
 		return true;
-	}else if(class_name=="xp"){
+	}else if(prop_name=="xp"){
 		o->xp=oms::read_integer(ctx);
 		return true;
-	}else if(class_name=="leftHandItem"){
+	}else if(prop_name=="leftHandItem"){
 		o->leftHandItem=(Item*)oms::read_object(ctx);
 		return true;
 	}
@@ -182,7 +177,7 @@ Item::~Item(){
 
 }
 
-bool Item::read(oms::context* ctx, const std::string& class_name, Item* o){
+bool Item::read(oms::context* ctx, const std::string& prop_name, Item* o){
 	std::cout << "Item::read called." << std::endl;
 }
 

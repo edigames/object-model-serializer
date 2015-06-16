@@ -50,6 +50,7 @@ public:
 		my_firstb=0;
 		my_nullb=0;
 		my_num=0;
+		my_b=0;
 	}
 
 	virtual ~ClassA(){
@@ -75,18 +76,23 @@ public:
 			oms::read_string(ctx);
 			return true;
 		}else if(prop_name=="my_str"){
+
 			o->my_str=oms::read_string(ctx);
 			return true;
 		}else if(prop_name=="int_array"){
 			uint32_t count=oms::read_array(ctx);
 			for(uint32_t i=0;i<count;++i){
-				o->int_array.push_back(oms::read_integer(ctx));
+				oms::read_type(ctx, oms::type_integer);
+				int j=oms::read_integer(ctx);
+				o->int_array.push_back(j);
 			}
 			return true;
 		}else if(prop_name=="my_map"){
 			uint32_t count=oms::read_map(ctx);
 			for(uint32_t i=0;i<count;++i){
+				oms::read_type(ctx, oms::type_string);
 				std::string key=oms::read_string(ctx);
+				oms::read_type(ctx, oms::type_string);
 				std::string value=oms::read_string(ctx);
 				o->my_map[key]=value;
 			}
@@ -115,7 +121,8 @@ public:
 		oms::write_array(ctx, o->int_array.size());
 		std::vector<int>::iterator it=o->int_array.begin();
 		while(it!=o->int_array.end()){
-			oms::write_integer(ctx,*it);
+			int j=*it;
+			oms::write_integer(ctx,j);
 			++it;
 		}
 
@@ -160,10 +167,7 @@ ClassA* make_model_a(){
 bool test_deep_copy(oms::environment* env){
 	ClassA* a1=make_model_a();
 	ClassA* a2=(ClassA*)oms::util::deep_copy(env, a1, "ClassA");
-	ClassA* a3=(ClassA*)oms::util::deep_copy(env, a2, "ClassA");
-	std::string s1=oms::util::write_to_string(env, a2, "ClassA");
-	std::string s2=oms::util::write_to_string(env, a3, "ClassA");
-	return s1.compare(s2)==0 && a2->my_str=="hello world!";
+	return a2->my_str.compare("hello world!")==0;
 }
 
 bool test_write_to_file(oms::environment* env){

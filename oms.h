@@ -20,14 +20,13 @@
 namespace oms{
 	const uint8_t type_unknown=0;
 	const uint8_t type_object=1;
-	const uint8_t type_true=2;
-	const uint8_t type_false=3;
-	const uint8_t type_null=4;
-	const uint8_t type_integer=5;
-	const uint8_t type_number=6;
-	const uint8_t type_string=7;
-	const uint8_t type_array=8;
-	const uint8_t type_map=9;
+	const uint8_t type_boolean=2;
+	const uint8_t type_null=3;
+	const uint8_t type_integer=4;
+	const uint8_t type_number=5;
+	const uint8_t type_string=6;
+	const uint8_t type_array=7;
+	const uint8_t type_map=8;
 
 	struct object_info;
 	struct environment;

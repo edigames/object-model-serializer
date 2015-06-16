@@ -41,7 +41,8 @@ void oms::write_null(oms::context* ctx){
 }
 
 void oms::write_boolean(oms::context* ctx, bool v){
-	oms::io::write_uint8(ctx->ios,v ? oms::type_true : oms::type_false);
+	oms::io::write_uint8(ctx->ios,oms::type_boolean);
+	oms::io::write_bool(ctx->ios,v);
 }
 
 void oms::write_integer(oms::context* ctx, int v){
@@ -103,8 +104,7 @@ uint8_t oms::peek_type(oms::context* ctx){
 uint32_t oms::read_size(oms::context* ctx, uint8_t type){
 	uint32_t size=0;
 	switch(type){
-	case oms::type_true:
-	case oms::type_false:
+	case oms::type_boolean:
 		size=1;
 		break;
 	case oms::type_integer:
